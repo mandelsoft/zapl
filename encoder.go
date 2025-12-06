@@ -1,7 +1,9 @@
 package zapl
 
 import (
+	"encoding/json"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -44,7 +46,7 @@ type Encoder struct {
 	cache *cache
 
 	fields []any
-	enc    JSONEncoder
+	enc    DataEncoder
 	buf    *buffer.Buffer
 }
 
@@ -91,15 +93,20 @@ func (e *Encoder) free() {
 	_encPool.Put(e)
 }
 
+func realmNameForLoggerName(name string) string {
+	if name == "" {
+		return "zap"
+	}
+
+	return "zap/" + strings.ReplaceAll(name, ".", "/")
+}
+
 func (e *Encoder) EncodeEntry(entry zapcore.Entry, fields []zapcore.Field) (*buffer.Buffer, error) {
 	e = e.clone()
 
-	r := "zap"
-
+	r := realmNameForLoggerName(entry.LoggerName)
 	e.fields = nil
-	if entry.LoggerName != "" {
-		r = r + "/" + entry.LoggerName
-	}
+
 	l := e.cache.Get(r)
 	for _, f := range fields {
 		f.AddTo(e)
@@ -135,11 +142,11 @@ func (e *Encoder) AddArray(key string, marshaler zapcore.ArrayMarshaler) error {
 	if err := marshaler.MarshalLogArray(&e.enc); err != nil {
 		return err
 	}
-	s, err := e.enc.String()
+	s, err := json.Marshal(e.enc.slice)
 	if err != nil {
 		return err
 	}
-	e.fields = append(e.fields, logging.KeyValue(e.enc.namespace+key, s))
+	e.fields = append(e.fields, logging.KeyValue(e.enc.namespace+key, string(s)))
 	return nil
 }
 
@@ -147,7 +154,7 @@ func (e *Encoder) AddObject(key string, marshaler zapcore.ObjectMarshaler) error
 	if err := marshaler.MarshalLogObject(&e.enc); err != nil {
 		return err
 	}
-	s, err := e.enc.String()
+	s, err := json.Marshal(e.enc.object)
 	if err != nil {
 		return err
 	}

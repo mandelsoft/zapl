@@ -35,7 +35,7 @@ func NewDynamic(ctx logging.Context, name string, opts ...zap.Option) *zap.Logge
 	return New(ctx, name, DynamicLogging, opts...)
 }
 
-func New(ctx logging.Context, name string, creator LoggerFactory, opts ...zap.Option) *zap.Logger {
+func New(ctx logging.Context, basename string, creator LoggerFactory, opts ...zap.Option) *zap.Logger {
 	zl := ctx.Logger(logging.NewRealm("zap"))
 
 	il := zapcore.DebugLevel
@@ -53,8 +53,8 @@ func New(ctx logging.Context, name string, creator LoggerFactory, opts ...zap.Op
 
 	zcore := zapcore.NewCore(enc, &noOutput{}, lvl)
 	log := zap.New(zcore)
-	if name != "" {
-		log = log.Named(name)
+	if basename != "" {
+		log = log.Named(basename)
 	}
 	return log
 }

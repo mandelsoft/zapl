@@ -5,121 +5,157 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/mandelsoft/zapl/pool"
 	"go.uber.org/zap/zapcore"
 )
 
-type JSONEncoder struct {
+var _dataPool = pool.New(func() *DataEncoder {
+	return &DataEncoder{object: make(map[string]interface{})}
+})
+
+func JSONEncodeObject(m zapcore.ObjectMarshaler) ([]byte, error) {
+	e := _dataPool.Get()
+	defer e.free()
+
+	err := m.MarshalLogObject(e)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(e.object)
+}
+
+func JSONEncodeArray(m zapcore.ArrayMarshaler) ([]byte, error) {
+	e := _dataPool.Get()
+	defer e.free()
+
+	err := m.MarshalLogArray(e)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(e.slice)
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+type DataEncoder struct {
 	namespace string
 	object    map[string]interface{}
 	slice     []interface{}
 }
 
-var _ zapcore.ArrayEncoder = (*JSONEncoder)(nil)
-var _ zapcore.ObjectEncoder = (*JSONEncoder)(nil)
+var _ zapcore.ArrayEncoder = (*DataEncoder)(nil)
+var _ zapcore.ObjectEncoder = (*DataEncoder)(nil)
 
-func NewJSONObjectEncoder() *JSONEncoder {
-	return &JSONEncoder{object: make(map[string]interface{})}
+func NewJSONEncoder() *DataEncoder {
+	return &DataEncoder{object: make(map[string]interface{})}
 }
 
-func (e *JSONEncoder) Bytes() ([]byte, error) {
-	if e.object != nil {
-		return json.Marshal(e.object)
-	} else {
-		return json.Marshal(e.slice)
-	}
+func (e *DataEncoder) clone() *DataEncoder {
+	return _dataPool.Get()
 }
 
-func (e *JSONEncoder) String() (string, error) {
-	b, err := e.Bytes()
-	if err != nil {
-		return "", err
-	}
-	return string(b), nil
+func (e *DataEncoder) Reset() {
+	clear(e.object)
+	e.slice = e.slice[:0]
+	e.namespace = ""
+}
+
+func (e *DataEncoder) free() {
+	e.Reset()
+	_dataPool.Put(e)
+}
+
+func (e *DataEncoder) Object() map[string]interface{} {
+	return e.object
+}
+
+func (e *DataEncoder) Slice() []interface{} {
+	return e.slice
 }
 
 // array encoder
 
-func (e *JSONEncoder) AppendBool(v bool) {
+func (e *DataEncoder) AppendBool(v bool) {
 	e.slice = append(e.slice, v)
 }
 
-func (e *JSONEncoder) AppendByteString(v []byte) {
+func (e *DataEncoder) AppendByteString(v []byte) {
 	e.slice = append(e.slice, v)
 }
 
-func (e *JSONEncoder) AppendComplex128(v complex128) {
+func (e *DataEncoder) AppendComplex128(v complex128) {
 	e.slice = append(e.slice, v)
 }
 
-func (e *JSONEncoder) AppendComplex64(v complex64) {
+func (e *DataEncoder) AppendComplex64(v complex64) {
 	e.slice = append(e.slice, v)
 }
 
-func (e *JSONEncoder) AppendFloat64(v float64) {
+func (e *DataEncoder) AppendFloat64(v float64) {
 	e.slice = append(e.slice, v)
 }
 
-func (e *JSONEncoder) AppendFloat32(v float32) {
+func (e *DataEncoder) AppendFloat32(v float32) {
 	e.slice = append(e.slice, v)
 }
 
-func (e *JSONEncoder) AppendInt(v int) {
+func (e *DataEncoder) AppendInt(v int) {
 	e.slice = append(e.slice, v)
 }
 
-func (e *JSONEncoder) AppendInt64(v int64) {
+func (e *DataEncoder) AppendInt64(v int64) {
 	e.slice = append(e.slice, v)
 }
 
-func (e *JSONEncoder) AppendInt32(v int32) {
+func (e *DataEncoder) AppendInt32(v int32) {
 	e.slice = append(e.slice, v)
 }
 
-func (e *JSONEncoder) AppendInt16(v int16) {
+func (e *DataEncoder) AppendInt16(v int16) {
 	e.slice = append(e.slice, v)
 }
 
-func (e *JSONEncoder) AppendInt8(v int8) {
+func (e *DataEncoder) AppendInt8(v int8) {
 	e.slice = append(e.slice, v)
 }
 
-func (e *JSONEncoder) AppendString(v string) {
+func (e *DataEncoder) AppendString(v string) {
 	e.slice = append(e.slice, v)
 }
 
-func (e *JSONEncoder) AppendUint(v uint) {
+func (e *DataEncoder) AppendUint(v uint) {
 	e.slice = append(e.slice, v)
 }
 
-func (e *JSONEncoder) AppendUint64(v uint64) {
+func (e *DataEncoder) AppendUint64(v uint64) {
 	e.slice = append(e.slice, v)
 }
 
-func (e *JSONEncoder) AppendUint32(v uint32) {
+func (e *DataEncoder) AppendUint32(v uint32) {
 	e.slice = append(e.slice, v)
 }
 
-func (e *JSONEncoder) AppendUint16(v uint16) {
+func (e *DataEncoder) AppendUint16(v uint16) {
 	e.slice = append(e.slice, v)
 }
 
-func (e *JSONEncoder) AppendUint8(v uint8) {
+func (e *DataEncoder) AppendUint8(v uint8) {
 	e.slice = append(e.slice, v)
 }
 
-func (e *JSONEncoder) AppendUintptr(v uintptr) {
+func (e *DataEncoder) AppendUintptr(v uintptr) {
 	e.slice = append(e.slice, fmt.Sprintf("%#x", v))
 }
 
-func (e *JSONEncoder) AppendDuration(v time.Duration) {
+func (e *DataEncoder) AppendDuration(v time.Duration) {
 	e.slice = append(e.slice, v)
 }
 
-func (e *JSONEncoder) AppendTime(v time.Time) {
+func (e *DataEncoder) AppendTime(v time.Time) {
 	e.slice = append(e.slice, v)
 }
 
-func (e *JSONEncoder) AppendArray(marshaler zapcore.ArrayMarshaler) error {
+func (e *DataEncoder) AppendArray(marshaler zapcore.ArrayMarshaler) error {
 	old := e.slice
 	e.slice = nil
 	err := marshaler.MarshalLogArray(e)
@@ -131,7 +167,7 @@ func (e *JSONEncoder) AppendArray(marshaler zapcore.ArrayMarshaler) error {
 	return nil
 }
 
-func (e *JSONEncoder) AppendObject(marshaler zapcore.ObjectMarshaler) error {
+func (e *DataEncoder) AppendObject(marshaler zapcore.ObjectMarshaler) error {
 	old := e.object
 	ns := e.namespace
 	e.object = map[string]interface{}{}
@@ -146,14 +182,14 @@ func (e *JSONEncoder) AppendObject(marshaler zapcore.ObjectMarshaler) error {
 	return nil
 }
 
-func (e *JSONEncoder) AppendReflected(v interface{}) error {
+func (e *DataEncoder) AppendReflected(v interface{}) error {
 	e.slice = append(e.slice, v)
 	return nil
 }
 
 // object encoder
 
-func (e *JSONEncoder) AddArray(key string, marshaler zapcore.ArrayMarshaler) error {
+func (e *DataEncoder) AddArray(key string, marshaler zapcore.ArrayMarshaler) error {
 	old := e.slice
 	e.slice = nil
 	err := marshaler.MarshalLogArray(e)
@@ -165,7 +201,7 @@ func (e *JSONEncoder) AddArray(key string, marshaler zapcore.ArrayMarshaler) err
 	return nil
 }
 
-func (e *JSONEncoder) AddObject(key string, marshaler zapcore.ObjectMarshaler) error {
+func (e *DataEncoder) AddObject(key string, marshaler zapcore.ObjectMarshaler) error {
 	ns := e.namespace
 	old := e.object
 	e.object = map[string]interface{}{}
@@ -179,95 +215,95 @@ func (e *JSONEncoder) AddObject(key string, marshaler zapcore.ObjectMarshaler) e
 	return nil
 }
 
-func (e *JSONEncoder) AddBinary(key string, value []byte) {
+func (e *DataEncoder) AddBinary(key string, value []byte) {
 	e.object[e.namespace+key] = value
 }
 
-func (e *JSONEncoder) AddByteString(key string, value []byte) {
+func (e *DataEncoder) AddByteString(key string, value []byte) {
 	e.object[e.namespace+key] = value
 }
 
-func (e *JSONEncoder) AddBool(key string, value bool) {
+func (e *DataEncoder) AddBool(key string, value bool) {
 	e.object[e.namespace+key] = value
 }
 
-func (e *JSONEncoder) AddComplex128(key string, value complex128) {
+func (e *DataEncoder) AddComplex128(key string, value complex128) {
 	e.object[e.namespace+key] = value
 }
 
-func (e *JSONEncoder) AddComplex64(key string, value complex64) {
+func (e *DataEncoder) AddComplex64(key string, value complex64) {
 	e.object[e.namespace+key] = value
 }
 
-func (e *JSONEncoder) AddDuration(key string, value time.Duration) {
+func (e *DataEncoder) AddDuration(key string, value time.Duration) {
 	e.object[e.namespace+key] = value
 }
 
-func (e *JSONEncoder) AddFloat64(key string, value float64) {
+func (e *DataEncoder) AddFloat64(key string, value float64) {
 	e.object[e.namespace+key] = value
 }
 
-func (e *JSONEncoder) AddFloat32(key string, value float32) {
+func (e *DataEncoder) AddFloat32(key string, value float32) {
 	e.object[e.namespace+key] = value
 }
 
-func (e *JSONEncoder) AddInt(key string, value int) {
+func (e *DataEncoder) AddInt(key string, value int) {
 	e.object[e.namespace+key] = value
 }
 
-func (e *JSONEncoder) AddInt64(key string, value int64) {
+func (e *DataEncoder) AddInt64(key string, value int64) {
 	e.object[e.namespace+key] = value
 }
 
-func (e *JSONEncoder) AddInt32(key string, value int32) {
+func (e *DataEncoder) AddInt32(key string, value int32) {
 	e.object[e.namespace+key] = value
 }
 
-func (e *JSONEncoder) AddInt16(key string, value int16) {
+func (e *DataEncoder) AddInt16(key string, value int16) {
 	e.object[e.namespace+key] = value
 }
 
-func (e *JSONEncoder) AddInt8(key string, value int8) {
+func (e *DataEncoder) AddInt8(key string, value int8) {
 	e.object[e.namespace+key] = value
 }
 
-func (e *JSONEncoder) AddString(key, value string) {
+func (e *DataEncoder) AddString(key, value string) {
 	e.object[e.namespace+key] = value
 }
 
-func (e *JSONEncoder) AddTime(key string, value time.Time) {
+func (e *DataEncoder) AddTime(key string, value time.Time) {
 	e.object[e.namespace+key] = value
 }
 
-func (e *JSONEncoder) AddUint(key string, value uint) {
+func (e *DataEncoder) AddUint(key string, value uint) {
 	e.object[e.namespace+key] = value
 }
 
-func (e *JSONEncoder) AddUint64(key string, value uint64) {
+func (e *DataEncoder) AddUint64(key string, value uint64) {
 	e.object[e.namespace+key] = value
 }
 
-func (e *JSONEncoder) AddUint32(key string, value uint32) {
+func (e *DataEncoder) AddUint32(key string, value uint32) {
 	e.object[e.namespace+key] = value
 }
 
-func (e *JSONEncoder) AddUint16(key string, value uint16) {
+func (e *DataEncoder) AddUint16(key string, value uint16) {
 	e.object[e.namespace+key] = value
 }
 
-func (e *JSONEncoder) AddUint8(key string, value uint8) {
+func (e *DataEncoder) AddUint8(key string, value uint8) {
 	e.object[e.namespace+key] = value
 }
 
-func (e *JSONEncoder) AddUintptr(key string, value uintptr) {
+func (e *DataEncoder) AddUintptr(key string, value uintptr) {
 	e.object[e.namespace+key] = fmt.Sprintf("%#x", value)
 }
 
-func (e *JSONEncoder) AddReflected(key string, value interface{}) error {
+func (e *DataEncoder) AddReflected(key string, value interface{}) error {
 	e.object[e.namespace+key] = value
 	return nil
 }
 
-func (e *JSONEncoder) OpenNamespace(key string) {
+func (e *DataEncoder) OpenNamespace(key string) {
 	e.namespace = e.namespace + key + "/"
 }

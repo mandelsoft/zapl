@@ -1,6 +1,8 @@
 package zapl_test
 
 import (
+	"encoding/json"
+
 	"github.com/mandelsoft/goutils/maputils"
 	"github.com/mandelsoft/zapl"
 	. "github.com/onsi/ginkgo/v2"
@@ -10,7 +12,7 @@ import (
 
 var _ = Describe("JSONEncoder", func() {
 
-	var enc *zapl.JSONEncoder
+	var enc *zapl.DataEncoder
 
 	ar := []interface{}{int(1), uint(2), int32(3), uint32(4), int64(5), uint64(6), byte(7), int8(8), uint8(9), int16(10), uint16(11), int32(12), "13", float32(14.1), float64(15.1), true}
 
@@ -21,28 +23,37 @@ var _ = Describe("JSONEncoder", func() {
 
 	Context("arrays", func() {
 		BeforeEach(func() {
-			enc = &zapl.JSONEncoder{}
+			enc = &zapl.DataEncoder{}
 		})
 
 		It("flat", func() {
 			enc.AppendArray(TestArray(ar))
-			Expect(enc.String()).To(Equal(`[[1,2,3,4,5,6,7,8,9,10,11,12,"13",14.1,15.1,true]]`))
+			Expect(json.Marshal(enc.Slice())).To(Equal([]byte(`[[1,2,3,4,5,6,7,8,9,10,11,12,"13",14.1,15.1,true]]`)))
 		})
 	})
 
 	Context("objects", func() {
 		BeforeEach(func() {
-			enc = zapl.NewJSONObjectEncoder()
+			enc = zapl.NewJSONEncoder()
 		})
 
 		It("flat", func() {
 			enc.AddObject("obj", TestObject(obj))
-			Expect(enc.String()).To(Equal(`{"obj":{"a":1,"b":true}}`))
+			Expect(json.Marshal(enc.Object())).To(Equal([]byte(`{"obj":{"a":1,"b":true}}`)))
 		})
 
 		It("nested", func() {
 			enc.AddObject("obj", TestObject(map[string]interface{}{"nested": obj}))
-			Expect(enc.String()).To(Equal(`{"obj":{"nested":{"a":1,"b":true}}}`))
+			Expect(json.Marshal(enc.Object())).To(Equal([]byte(`{"obj":{"nested":{"a":1,"b":true}}}`)))
+		})
+	})
+
+	Context("reconstruction", func() {
+		It("array", func() {
+			Expect(zapl.JSONEncodeArray(TestArray(ar))).To(Equal([]byte(`[1,2,3,4,5,6,7,8,9,10,11,12,"13",14.1,15.1,true]`)))
+		})
+		It("object", func() {
+			Expect(zapl.JSONEncodeObject(TestObject(obj))).To(Equal([]byte(`{"a":1,"b":true}`)))
 		})
 	})
 })

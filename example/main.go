@@ -23,6 +23,7 @@ func main() {
 	log.Info("a second zap message with fields", zap.String("ctx", "first"))
 	log.Info("combining field formatting: {{value}}", zap.String("value", "inline field"))
 
-	log.Debug("a zap debug message")
+	log2 := log.Named("nested")
+	log2.Debug("a zap debug message")
 
 }

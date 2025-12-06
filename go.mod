@@ -1,6 +1,6 @@
 module github.com/mandelsoft/zapl
 
-go 1.25.0
+go 1.25.4
 
 require (
 	github.com/mandelsoft/goutils v0.0.0-20251119213939-8b151b4e6ff4
